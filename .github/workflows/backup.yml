@@ -1,0 +1,32 @@
+name: Backup Rancher Data
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Každý den ve 2:00
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v1
+
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Pull Rancher data
+        run: |
+          sshpass -p ${{ secrets.VPS_USER_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "tar czf - -C /var/lib/rancher_backup . " > rancher_backup.tar.gz
+
+      - name: Upload backup to GitHub Packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: rancher-backup
+          path: rancher_backup.tar.gz
